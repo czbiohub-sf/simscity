@@ -33,7 +33,7 @@ setuptools.setup(
         'numpy',
         'scipy',
         'matplotlib',
-        'pandas',
-        'scanpy'
+        # 'pandas',
+        # 'scanpy'
     ]
 )
