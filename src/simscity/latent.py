@@ -6,28 +6,33 @@ import scipy as st
 
 
 def gen_classes(n_latent: int = 8, n_classes: int = 3,
-                scale: Union[int, float] = 5.0):
+                scale: Union[int, float] = 5.0, random: bool = False):
     """Generates the centroids of n_classes in a latent space
 
     :param n_latent: dimensionality of the latent space
     :param n_classes: number of different classes
     :param scale: scaling factor
+    :param random: generate random vectors or try to evenly space them
     :return: array of shape (n_classes, n_latent)
     """
 
-    if n_latent == 2:
-        # evenly spaced on the unit circle
-        class_centers = scale * np.array(
-                [[np.cos(2 * np.pi / n_classes * i),
-                  np.sin(2 * np.pi / n_classes * i)]
-                 for i in range(n_classes)]
-        )
-    elif n_latent > 2:
-        # randomly generated from i.i.d. standard normal of n_latent dim
+    if random or n_classes > 2**n_latent:
+        if n_classes:
+            raise RuntimeWarning('Too many classes for unit cube, randomizing')
+
         x = np.random.normal(0, 1, size=(n_classes, n_latent))
-        class_centers = scale * x / np.linalg.norm(x, axis=1)[:, None]
+    elif n_latent == 2:
+        # evenly spaced on the unit circle
+        x = np.array([[np.cos(2 * np.pi / n_classes * i),
+                       np.sin(2 * np.pi / n_classes * i)]
+                      for i in range(n_classes)])
     else:
-        raise ValueError(f'n_latent = {n_latent} is not supported')
+        i2v = lambda i: list(map(int, bin(i)[2:].zfill(n_latent)))
+
+        x = np.array([(-1) ** np.array(i2v(i))
+                      for i in range(n_classes)]).astype(float)
+
+    class_centers = scale * x / np.linalg.norm(x, axis=1, keepdims=True)
 
     return class_centers
 
@@ -87,35 +92,3 @@ def latent_expression(n_obs: int, class_centers: np.ndarray,
     obs_z, classes = sample_classes(class_centers, n_obs, proportions)
 
     return obs_z, classes
-
-    # latent = np.zeros((n_batches * n_obs, n_latent))
-    # batch = np.repeat(range(n_batches), n_obs)
-    # classes = np.ones(n_batches * n_obs) * -1
-    #
-    # z_weights = np.random.randn(n_latent, n_features)
-    #
-    # for batch in range(n_batches):
-    #     id_range = np.arange(batch * n_obs, ((batch + 1) * n_obs))
-    #
-    #
-    #     latent[id_range, :] = obs
-    #     classes[id_range] = s_classes
-    #
-    # expression = np.dot(latent, z_weights)
-    #
-    # if bio_batch_angle is not None:
-    #     projection_to_bio = np.dot(np.linalg.pinv(z_weights), z_weights)
-    # else:
-    #     projection_to_bio = None
-    #
-    # # add batch vector
-    # batch_vectors = gen_batch_vectors(
-    #     n_batches, n_features, batch_scale, bio_batch_angle, projection_to_bio
-    # )
-    #
-    # for batch in range(n_batches):
-    #     expression[metadata['batch'] == batch, :] += batch_vectors[batch, :]
-    #
-    #
-    # return expression, latent, batch, classes
-

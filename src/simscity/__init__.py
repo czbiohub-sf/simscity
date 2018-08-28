@@ -1,6 +1,8 @@
 
 from typing import Union
 
+import numpy as np
+
 from simscity import batch, latent, sequencing, util
 
 
