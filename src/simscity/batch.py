@@ -37,11 +37,11 @@ def gen_batch_vectors(n_batches: int, n_features: int, batch_scale: float,
     return batch_vectors
 
 
-def add_batch_vector(expression: np.ndarray, batch: np.ndarray,
-                     batch_scale: Union[int, float],
-                     bio_batch_angle: Union[float, None],
-                     projection_to_bio: Union[np.ndarray, None],
-                     copy: bool = True):
+def add_batch_vectors(expression: np.ndarray, batch: np.ndarray,
+                      batch_scale: Union[int, float],
+                      bio_batch_angle: Union[float, None],
+                      projection_to_bio: Union[np.ndarray, None],
+                      copy: bool = True):
     """Generate batch-effect vectors and apply them to the expression data
 
     :param expression: array of true expression, in latent space
