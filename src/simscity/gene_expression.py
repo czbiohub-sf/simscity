@@ -2,6 +2,8 @@
 from typing import Union
 
 import numpy as np
+import scipy as st
+
 import pandas
 import scanpy
 
@@ -53,15 +55,17 @@ def sample_classes(class_centers: np.ndarray, n_obs: int,
 
 
 
-def gen_batch_vectors(W: np.ndarray, n_batches: int, n_features: int,
-                      batch_scale: float, bio_batch_angle: float):
-    """Generates a batch-effect vector for each batch
+def gen_batch_vectors(n_batches: int, n_features: int, batch_scale: float,
+                      bio_batch_angle: Union[float, None] = None,
+                      projection_to_bio: Union[np.ndarray, None] = None):
+    """Generates a batch-effect vector for each batch, optionally with some
+    relation to the biological space
 
-    :param W: weighting that translate from latent to feature space
     :param n_batches: number of batches
     :param n_features: number of features
     :param batch_scale: size of batch effect relative to data
-    :param bio_batch_angle: angle of batch effect relative to biology
+    :param projection_to_bio: projection from latent into gene space
+    :param bio_batch_angle: angle of batch effect w/ bio subspace
     :return: array of shape (n_batches, n_features)
     """
     def norm(X):
@@ -71,16 +75,13 @@ def gen_batch_vectors(W: np.ndarray, n_batches: int, n_features: int,
     batch_vectors = (batch_vectors / norm(batch_vectors)
                      * np.mean(norm(expression)) * batch_scale)
 
-    # The col-span of W is the bio-space
     if bio_batch_angle is not None:
-        projection_to_bio = np.dot(np.linalg.pinv(W), W)
-
         v_projected = np.dot(batch_vectors, projection_to_bio)
         v_complement = batch_vectors - v_projected
 
         batch_vectors = norm(batch_vectors) * (
-                np.sin(bio_batch_angle) * v_complement / norm(v_complement) +
-                np.cos(bio_batch_angle) * v_projected / norm(v_projected)
+            np.sin(bio_batch_angle) * v_complement / norm(v_complement) +
+            np.cos(bio_batch_angle) * v_projected / norm(v_projected)
         )
 
     return batch_vectors
@@ -90,7 +91,7 @@ def true_expression(n_obs: int = 1000, n_features: int = 100,
                     n_batches: int = 2, n_latent: int = 2, n_classes: int = 3,
                     proportions: np.ndarray = None, seed: int = 2018,
                     scale: Union[int, float]=5, batch_scale: float = 0.1,
-                    bio_batch_angle: float = None):
+                    bio_batch_angle: Union[float, None] = None):
     """
 
     :param n_obs: number of observations (cells) per batch
@@ -114,7 +115,7 @@ def true_expression(n_obs: int = 1000, n_features: int = 100,
 
     assert (n_batches, n_classes) == proportions.shape
 
-    if seed:
+    if seed is not None:
         np.random.seed(seed)
 
     class_centers = latent_space(n_latent, n_classes, scale)
@@ -137,9 +138,15 @@ def true_expression(n_obs: int = 1000, n_features: int = 100,
     expression = np.dot(latent, W)
     expression_gt = expression.copy()
 
+    if bio_batch_angle is not None:
+        projection_to_bio = np.dot(np.linalg.pinv(W), W)
+    else:
+        projection_to_bio = None
+
     # add batch vector
-    batch_vectors = gen_batch_vectors(W, n_batches, n_features,
-                                      batch_scale, bio_batch_angle)
+    batch_vectors = gen_batch_vectors(
+        n_batches, n_features, batch_scale, bio_batch_angle, projection_to_bio
+    )
 
     for batch in range(n_batches):
         expression[metadata['batch'] == batch, :] += batch_vectors[batch, :]
@@ -152,3 +159,66 @@ def true_expression(n_obs: int = 1000, n_features: int = 100,
                            obsm={'X_latent': latent, 'X_gt': expression_gt})
 
     return adata
+
+
+def library_size(n_cells: int, loc: float = 8.5, scale: float = 1.5,
+                 lower_bound: float = -1.0, upper_bound: float = np.inf):
+    """log-normal noise for the number of reads (with a lower bound to
+    represent a minimum depth cutoff)
+
+    :param n_cells:
+    :param loc:
+    :param scale:
+    :param lower_bound:
+    :param upper_bound:
+    :return:
+    """
+
+    return np.exp(st.truncnorm.rvs(
+        lower_bound, upper_bound, loc=loc, scale=scale, size=n_cells
+    )).astype(int)
+
+
+def umi_counts(raw_expression: np.ndarray, lib_size: np.ndarray = None):
+    """Given an (n_obs, n_features) array of true expression values, generates
+    a count matrix of UMIs based by multinomial sampling with a variable-sized
+    library of reads using a truncated log-normal distribution
+
+    :param raw_expression: expression of true expression values
+    :param lib_size: library size for each cell
+    :return: int array of shape (n_obs, n_features) containing umi counts
+    """
+
+    n_cells, n_genes = raw_expression.shape
+
+    if lib_size is None:
+        lib_size = library_size(n_cells)
+
+    gene_p = raw_expression / raw_expression.sum(1)[:, None]
+
+    cell_gene_umis = np.vstack(
+        [np.random.multinomial(n=lib_size[i], pvals=gene_p[i, :])
+         for i in range(n_cells)]
+    )
+
+    return cell_gene_umis
+
+
+def pcr_noise(read_counts: np.ndarray, pcr_betas: np.ndarray, n: int):
+    """PCR noise model: every read has an affinity for PCR, and for every round
+    of PCR we do a ~binomial doubling of each count.
+
+    :param read_counts: array of shape (n_cells, n_genes) representing unique
+                        molecules
+    :param pcr_betas: read-specific PCR efficiency factor
+    :param n: number of rounds of PCR to simulate
+    :return: int array of shape (n_cells, n_genes) with amplified counts
+    """
+    read_counts = read_counts.copy()
+
+    # for each round of pcr, each gene increases according to its affinity factor
+    for i in range(n):
+        read_counts += np.random.binomial(read_counts, pcr_betas[None, :],
+                                          size=read_counts.shape)
+
+    return read_counts
