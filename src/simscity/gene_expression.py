@@ -166,11 +166,11 @@ def library_size(n_cells: int, loc: float = 8.5, scale: float = 1.5,
     """log-normal noise for the number of reads (with a lower bound to
     represent a minimum depth cutoff)
 
-    :param n_cells:
-    :param loc:
-    :param scale:
-    :param lower_bound:
-    :param upper_bound:
+    :param n_cells: number of library sizes to generate
+    :param loc: mean of library size in log-space
+    :param scale: standard deviation
+    :param lower_bound: lower bound relative to `loc`
+    :param upper_bound: upper bound relative to `loc`
     :return:
     """
 
