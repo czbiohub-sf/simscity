@@ -1,4 +1,4 @@
-# Welcome to Sim S(single)-C(ellular)ity
+# Welcome to Sim S(ingle)-C(ellular)ity
 
 The intention of this repo is to factor out code used to simulate scRNA data. Rather than writing it many times for many uses, we can write it one time and incorporate many features into our simulator. 
 
