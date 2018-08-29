@@ -4,6 +4,8 @@ from typing import Union
 import numpy as np
 import scipy as st
 
+import warnings
+
 
 def gen_classes(n_latent: int = 8, n_classes: int = 3,
                 scale: Union[int, float] = 5.0, random: bool = False):
@@ -20,7 +22,7 @@ def gen_classes(n_latent: int = 8, n_classes: int = 3,
 
     if random or n_classes > 2**n_latent:
         if n_classes:
-            raise RuntimeWarning('Too many classes for unit cube, randomizing')
+            warnings.warn('Too many classes for unit cube, randomizing')
 
         x = np.random.normal(0, 1, size=(n_classes, n_latent))
     elif n_latent == 2:
