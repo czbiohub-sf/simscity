@@ -12,8 +12,10 @@ def gen_classes(n_latent: int = 8, n_classes: int = 3,
     :param n_latent: dimensionality of the latent space
     :param n_classes: number of different classes
     :param scale: scaling factor
-    :param random: generate random vectors or try to evenly space them
-    :return: array of shape (n_classes, n_latent)
+    :param random: generate random vectors vs try to evenly space them. If
+                   `n_latent = 2` uses unit circle, otherwise unit hypercube
+    :return: array of shape (n_classes, n_latent) where each class vector has
+             length equal to `scale`
     """
 
     if random or n_classes > 2**n_latent:
@@ -27,6 +29,7 @@ def gen_classes(n_latent: int = 8, n_classes: int = 3,
                        np.sin(2 * np.pi / n_classes * i)]
                       for i in range(n_classes)])
     else:
+        # vertices of the n_latent-dimensional hypercube
         i2v = lambda i: list(map(int, bin(i)[2:].zfill(n_latent)))
 
         x = np.array([(-1) ** np.array(i2v(i))
@@ -41,9 +44,10 @@ def gen_projection(n_latent: int, n_features: int):
     """Generates a linear weighting from a latent space to feature space,
     and returns that project and it's inverse
 
-    :param n_latent:
-    :param n_features:
-    :return:
+    :param n_latent: dimensionality of the latent space
+    :param n_features: dimensionality of the feature space
+    :return: array of shape (n_latent, n_features) with weighting, and array
+             of shape (n_features, n_features) projecting on to the
     """
 
     z_weights = np.random.randn(n_latent, n_features)

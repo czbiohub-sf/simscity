@@ -2,7 +2,7 @@
 from typing import Union
 
 import numpy as np
-import scipy as st
+import scipy.stats as st
 
 
 def library_size(n_cells: int, loc: float = 8.5, scale: float = 1.5,
