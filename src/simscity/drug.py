@@ -4,17 +4,7 @@
 from typing import Union
 
 import numpy as np
-import scipy.stats as st
-
-
-# x_noise_scale = 2.0 # std dev of noise for data generation
-# w_n = 2 # number of components to generate for randomzied covariance matrix
-#
-# n_classes = 64 # number of classes (cell lines)
-# n_samples_per_class = 256 # number of samples per class (single cells per line)
-# n_features = 1024 # number of features
-# n_nz_features = 16 # number of features with non-zero coefficients
-# n_conditions = 12 # number of hopefully-monotonically-related conditions (doses)
+import scipy.special as ssp
 
 
 def drug_projection(n_latent: int, scale: Union[int, float], sparsity: float):
@@ -30,33 +20,43 @@ def drug_projection(n_latent: int, scale: Union[int, float], sparsity: float):
     n_nz_features = int(sparsity * n_latent)
 
     z_weights = np.zeros(n_latent)
-    nz_i = np.random.choice(n_features, n_nz_features, False)
+    nz_i = np.random.choice(n_latent, n_nz_features, False)
     z_weights[nz_i] = scale * np.random.normal(size=n_nz_features)
 
     return z_weights
 
 
-#
-# # per-cell drug resistance values
-# true_y = np.dot(x_vals, true_coef)
-#
-# y_lo, y_hi = np.percentile(true_y, (5., 95.))
-#
-# # assume that our space of accessible drug doses overlaps with the space of cell responses
-# # e.g. we have cells ranging from very sensitive to very resistant
-# dose_space = np.linspace(y_lo, y_hi, n_conditions*100)
-#
-#
-# # randomized stuff -- will overwrite
-#
-# # actual doses measured will be much smaller, and their locations are unknown
-# dose_thresholds = np.linspace(y_lo, y_hi, n_conditions) + np.random.normal(scale=(y_hi - y_lo) / (n_conditions*10))
-# print('dose_thresholds\n', '\t'.join('{:.2f}'.format(d) for d in dose_thresholds))
-#
-# drs = np.random.binomial(
-#     n_samples_per_class, ssp.expit(true_y[...,None] + dose_thresholds)
-# ).mean(1).astype(np.float32) / n_samples_per_class
-#
-# true_drs = np.random.binomial(
-#     n_samples_per_class, ssp.expit(true_y[...,None] + dose_space)
-# ).mean(1).astype(np.float32) / n_samples_per_class
+def drug_doses(n_latent: int, scale: Union[int, float], n_conditions: int):
+    """
+    Generates an array of uniformly-spaced values with a bit of random noise
+    added in. Scaled to cover the expected range of the drug response data,
+
+    :param n_latent: dimensionality of the relevant latent space
+    :param scale: scaling factor used for z weights
+    :param n_conditions: number of conditions (doses) desired
+    :return: array shape (n_conditions,) with thresholds
+    """
+
+    # expected scale of the dot product Xz
+    prod_scale = np.sqrt(n_latent * scale ** 2)
+
+    dose_thresholds = (
+        np.linspace(-3 * prod_scale, 3 * prod_scale, n_conditions)
+        + np.random.normal(size=n_conditions, scale=1.0 / (n_conditions ** 2))
+    )
+
+    return dose_thresholds
+
+
+def drug_response(X: np.ndarray, z_weights: np.ndarray, doses: np.ndarray):
+    """Given an array of samples from a latent space, the weighting for a drug,
+    and the dose thresholds, this calculates the expected outcome for each
+    sample according to a logistic function
+
+    :param X: array of samples with shape (n_samples, n_latent)
+    :param z_weights: (n_latent,) weights for projection into the drug space
+    :param doses: (n_conditions,) array of dose thresholds
+    :return: (n_samples, n_conditions) array of outcomes
+    """
+
+    return ssp.expit(np.dot(X, z_weights)[..., None] + doses)
