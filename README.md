@@ -4,7 +4,7 @@ The intention of this repo is to factor out code used to simulate scRNA data. Ra
 
 Examples of data that we might want to generate:
 
- - A particular type of latent space to test if we can learn it
- - A given batch structure to test if we can correct for it
- - Counts sampled according a given model, to test if the underlying sample can be recovered
- - Data associated with a phenotype to see if our models can learn that relationship (using the same generative model or otherwise)
+ - A particular type of latent space, to test if we can learn it
+ - A given batch structure, to test if we can correct for it
+ - Gene counts sampled according to a given model, to test if the underlying model can be recovered
+ - Data associated with a phenotype, to see if our models can learn that relationship (using the same generative model or otherwise)
