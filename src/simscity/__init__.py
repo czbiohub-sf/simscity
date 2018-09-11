@@ -5,7 +5,7 @@ from typing import Union
 
 import numpy as np
 
-from simscity import batch, latent, sequencing, util
+from simscity import batch, drug, latent, sequencing, util
 
 
 def mnn_synthetic_data(n_obs: int = 1000, n_features: int = 100,
