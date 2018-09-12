@@ -32,8 +32,8 @@ setuptools.setup(
     install_requires=[
         'numpy',
         'scipy',
-        'matplotlib',
-        # 'pandas',
-        # 'scanpy'
-    ]
+    ],
+    extras_require={
+        'scanpy':  ["scanpy"],
+    }
 )

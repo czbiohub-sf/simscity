@@ -5,8 +5,7 @@ from typing import Union
 
 import numpy as np
 
-import pandas as pd
-import scanpy
+import warnings
 
 
 def arrays_to_anndata(expression: np.ndarray, batch: np.ndarray,
@@ -19,6 +18,12 @@ def arrays_to_anndata(expression: np.ndarray, batch: np.ndarray,
     :param obsm: any other arrays to store as metadata
     :return: AnnData object containing the given data and metadata
     """
+    try:
+        import pandas as pd
+        import scanpy
+    except ImportError:
+        warnings.warn("arrays_to_anndata requires scanpy")
+        raise
 
     metadata = pd.DataFrame({'batch': batch, 'class': classes})
     metadata['batch'] = metadata['batch'].astype('category')
