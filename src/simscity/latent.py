@@ -1,101 +1,145 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 
-from typing import Union
+from typing import Tuple, Union
 
 import numpy as np
 
 import warnings
 
 
-def gen_classes(n_latent: int = 8, n_classes: int = 3,
-                scale: Union[int, float] = 5.0, random: bool = False):
-    """Generates the centroids of n_classes in a latent space
+def gen_weighting(
+    n_rows: int, n_cols: int, sparsity: np.ndarray, scale: np.ndarray
+) -> np.ndarray:
+    """Generic function to generate a random weighting. Can be used to create
+    a random projection from one space to another
+
+    :param n_rows: dimensionality of input space
+    :param n_cols: dimensionality of output space
+    :param sparsity: probability that a weight is nonzero. If shape is (n_cols,)
+                     or (1, n_cols), different values will apply to each columns.
+                     If shape is (n_rows, 1) the values will apply to each row.
+    :param scale: standard deviation of the weights. The rules for shape are the
+                  same as for `sparsity`
+    :return:
+    """
+    if np.any(sparsity <= 0):
+        raise ValueError(f"Sparsity must be non-negative")
+
+    # fmt: off
+    weights = (
+        (np.random.random(size=(n_rows, n_cols)) < sparsity)
+        * np.random.normal(loc=0.0, scale=scale, size=(n_rows, n_cols))
+    )
+    # fmt: on
+
+    if np.any((weights != 0).sum(1) == 0):
+        warnings.warn(
+            "Some columns have no nonzero weights. Consider increasing sparsity"
+        )
+
+    return weights
+
+
+def gen_programs(
+    n_latent: int,
+    n_features: int,
+    sparsity: Union[float, np.ndarray],
+    scale: Union[float, np.ndarray],
+) -> np.ndarray:
+    """Generate different "programs", each of which consists of a weighting
+    across the n_features of the biological space.
+
+    :param n_latent: dimensionality of the latent space (number of programs)
+    :param n_features: dimensionality of the feature space
+    :param sparsity: probability that a feature is used by a given program. Each
+                     feature will be selected `sparsity * n_latent` times on
+                     average. An array of size `(n_features,)` sets the rate per
+                     feature
+    :param scale: scaling factor for feature weighting. If an array of size
+                  `n_latent` is given, sets the scale per program
+    :return: array of shape (n_latent, n_features)
+    """
+    if isinstance(sparsity, float) and sparsity >= 1.0:
+        warnings.warn(
+            f"Sparsity {sparsity} >= 1.0, every feature will be used by every program"
+        )
+
+    # broadcast to correct dimensions
+    sparsity = np.broadcast_to(sparsity, (n_features,))
+    scale = np.broadcast_to(scale, (n_latent, 1))
+
+    programs = gen_weighting(n_latent, n_features, sparsity, scale)
+
+    return programs
+
+
+def gen_classes(
+    n_latent: int,
+    n_classes: int,
+    sparsity: Union[float, np.ndarray],
+    scale: Union[float, np.ndarray],
+) -> np.ndarray:
+    """Generates the *program weights* for n_classes in a latent space. Each
+    class is made up of a random selection of the available programs based on
+    the given sparsity
 
     :param n_latent: dimensionality of the latent space
     :param n_classes: number of different classes
-    :param scale: scaling factor
-    :param random: generate random vectors vs try to evenly space them. If
-                   `n_latent = 2` uses unit circle, otherwise unit hypercube
-    :return: array of shape (n_classes, n_latent) where each class vector has
-             length equal to `scale`
+    :param sparsity: probability that a program is used by a given class. Each
+                     program will be selected `sparsity * n_classes` times on
+                     average. An array of size `(n_latent,)` sets the rate per
+                     program
+    :param scale: scaling factor for program weighting. If an array
+                  of size `(n_latent,)` is given, different values are used for
+                  each of the programs
+    :return: array of shape (n_classes, n_latent)
     """
 
-    if random or n_classes > 2**n_latent:
-        if not random:
-            warnings.warn('Too many classes for unit cube, randomizing')
+    if isinstance(sparsity, float) and sparsity >= 1.0:
+        warnings.warn(
+            f"Sparsity {sparsity} >= 1.0, every program will be used by every class"
+        )
 
-        x = np.random.normal(0, 1, size=(n_classes, n_latent))
-    elif n_latent == 2:
-        # evenly spaced on the unit circle
-        x = np.array([[np.cos(2 * np.pi / n_classes * i),
-                       np.sin(2 * np.pi / n_classes * i)]
-                      for i in range(n_classes)])
-    else:
-        # vertices of the n_latent-dimensional hypercube
-        i2v = lambda i: list(map(int, bin(i)[2:].zfill(n_latent)))
+    # broadcast to correct dimensions
+    sparsity = np.broadcast_to(sparsity, (n_latent,))
+    scale = np.broadcast_to(scale, (n_latent,))
 
-        x = np.array([(-1) ** np.array(i2v(i))
-                      for i in range(n_classes)]).astype(float)
+    classes = gen_weighting(n_classes, n_latent, sparsity, scale)
 
-    class_centers = scale * x / np.linalg.norm(x, axis=1, keepdims=True)
-
-    return class_centers
+    return classes
 
 
-def gen_projection(n_latent: int, n_features: int):
-    """Generates a linear weighting from a latent space to feature space,
-    and returns that project and it's inverse
+def sample_classes(
+    n_obs: int, classes: np.ndarray, proportions: np.ndarray = None
+) -> Tuple[np.ndarray, np.ndarray]:
+    """Given the class weightings on the latent space and a number of cells,
+    produce a sample of cells based on the given class proportions. Cells have
+    random noise added along the dimensions specified by their class programs
 
-    :param n_latent: dimensionality of the latent space
-    :param n_features: dimensionality of the feature space
-    :return: array of shape (n_latent, n_features) with weighting, and array
-             of shape (n_features, n_features) projecting on to the
-    """
-
-    z_weights = np.random.randn(n_latent, n_features)
-    projection_to_bio = np.dot(np.linalg.pinv(z_weights), z_weights)
-
-    return z_weights, projection_to_bio
-
-
-def sample_classes(class_centers: np.ndarray, n_obs: int, proportions: np.ndarray):
-    """Given the class centroids in latent space and a number of cells, produce
-    a sample of cells based on the given proportions
-
-    :param class_centers: the class centroids in a latent space
-    :param n_obs: number of cells to generate
+    :param n_obs: number of observations (cells) to generate
+    :param classes: the class weightings on a latent space
     :param proportions: proportions for each class
-    :return: array of shape (n_obs, n_latent) and their class labels
+    :return: array of shape (n_obs, n_latent) observations and (n_obs,) class labels
     """
-    classes = np.random.choice(class_centers.shape[0], n_obs, p=proportions)
-
-    centers = class_centers[classes, :]
-    spread = np.random.randn(n_obs, class_centers.shape[1])
-
-    return centers + spread, classes
-
-
-def latent_expression(n_obs: int, class_centers: np.ndarray,
-                      proportions: np.ndarray = None):
-    """Sample a batch from a set of class centroids based on a vector of proportions
-
-    :param n_obs: number of observations (cells) to sample
-    :param class_centers: centroids of the dfiferent classes, in latent space
-    :param proportions: proportion of cells from each class in the batch
-                        default is equal representation
-    :return: latent array (n_obs, n_latent) and class labels
-    """
-
-    n_classes, n_latent = class_centers.shape
+    n_classes, n_latent = classes.shape
 
     if proportions is None:
         proportions = np.ones(n_classes) / n_classes
     else:
         proportions = np.asarray(proportions)
 
-    assert proportions.shape[0] == n_classes
+    labels = np.random.choice(n_classes, n_obs, p=proportions)
 
-    obs_z, classes = sample_classes(class_centers, n_obs, proportions)
+    class_programs = [
+        np.diagflat(classes[i, :] != 0).astype(int) for i in range(n_classes)
+    ]
 
-    return obs_z, classes
+    obs_z = classes[labels, :]
+
+    for i in range(n_classes):
+        obz_z[labels == i, :] += np.dot(
+            np.random.standard_normal((n_obs, n_classes)), class_programs[i]
+        )
+
+    return obs_z, labels
