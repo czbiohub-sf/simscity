@@ -139,7 +139,7 @@ def sample_classes(
 
     for i in range(n_classes):
         obs_z[labels == i, :] += np.dot(
-            np.random.standard_normal((n_obs, n_classes)), class_programs[i]
+            np.random.standard_normal((n_obs, n_latent)), class_programs[i]
         )
 
     return obs_z, labels
