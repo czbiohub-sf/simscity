@@ -15,10 +15,11 @@ def mnn_synthetic_data(
     n_latent: int = 2,
     n_classes: int = 3,
     proportions: np.ndarray = None,
-    seed: int = 2018,
+    sparsity: float = 1.0,
     scale: Union[int, float] = 5,
     batch_scale: float = 0.1,
     bio_batch_angle: Union[float, None] = None,
+    seed: int = 2018,
 ):
     """	
     :param n_obs: number of observations (cells) per batch
@@ -28,10 +29,11 @@ def mnn_synthetic_data(
     :param n_classes: number of classes shared across batches	
     :param proportions: proportion of cells from each class in each batch	
                         default is equal representation	
-    :param seed: seed for random number generator	
-    :param scale: scaling factor for generating data	
-    :param batch_scale: batch effect relative to data	
-    :param bio_batch_angle: angle of batch effect w/ bio subspace	
+    :param sparsity: sparsity of class weightings
+    :param scale: scaling factor for generating data
+    :param batch_scale: batch effect relative to data
+    :param bio_batch_angle: angle of batch effect w/ bio subspace
+    :param seed: seed for random number generator
     :return: real-valued expression data with batch effect and metadata
     """
 
@@ -43,36 +45,34 @@ def mnn_synthetic_data(
     if seed:
         np.random.seed(seed)
 
-    class_centers = latent.gen_classes(n_latent, n_classes, scale)
+    class_centers = latent.gen_classes(n_latent, n_classes, sparsity, scale)
 
-    batches = []
+    batches = np.repeat(np.arange(n_batches), n_obs)
+    latent_exp = []
     classes = []
 
     for b in range(n_batches):
         b_latent, b_classes = latent.sample_classes(
-            class_centers, n_obs, proportions[b, :]
+            n_obs, class_centers, proportions[b, :]
         )
-        batches.append(b_latent)
+        latent_exp.append(b_latent)
         classes.append(b_classes)
 
-    batches = np.vstack(batches)
+    latent_exp = np.vstack(latent_exp)
     classes = np.hstack(classes)
 
-    z_weights, projection_to_bio = latent.gen_projection(n_latent, n_features)
+    programs = latent.gen_programs(n_latent, n_features, 1.0, 1.0)
 
-    expression = np.dot(latent, W)
+    expression = np.dot(latent_exp, programs)
+
+    projection_to_bio = np.dot(np.linalg.pinv(programs), programs)
 
     expression_w_batch = batch.add_batch_vectors(
-        expression,
-        latent_batches,
-        batch_scale,
-        bio_batch_angle,
-        projection_to_bio,
-        copy=True,
+        expression, batches, batch_scale, bio_batch_angle, projection_to_bio, copy=True
     )
 
     adata = util.arrays_to_anndata(
-        expression_w_batch, batches, classes, X_latent=latent, X_gt=expression
+        expression_w_batch, batches, classes, X_latent=latent_exp, X_gt=expression
     )
 
     return adata
