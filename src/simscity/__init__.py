@@ -8,11 +8,18 @@ import numpy as np
 from simscity import batch, drug, latent, sequencing, util
 
 
-def mnn_synthetic_data(n_obs: int = 1000, n_features: int = 100,
-                       n_batches: int = 2, n_latent: int = 2, n_classes: int = 3,
-                       proportions: np.ndarray = None, seed: int = 2018,
-                       scale: Union[int, float]=5, batch_scale: float = 0.1,
-                       bio_batch_angle: Union[float, None] = None):
+def mnn_synthetic_data(
+    n_obs: int = 1000,
+    n_features: int = 100,
+    n_batches: int = 2,
+    n_latent: int = 2,
+    n_classes: int = 3,
+    proportions: np.ndarray = None,
+    seed: int = 2018,
+    scale: Union[int, float] = 5,
+    batch_scale: float = 0.1,
+    bio_batch_angle: Union[float, None] = None,
+):
     """	
     :param n_obs: number of observations (cells) per batch
     :param n_features: number of features (genes)	
@@ -33,7 +40,6 @@ def mnn_synthetic_data(n_obs: int = 1000, n_features: int = 100,
     else:
         proportions = np.asarray(proportions)
 
-
     if seed:
         np.random.seed(seed)
 
@@ -43,8 +49,9 @@ def mnn_synthetic_data(n_obs: int = 1000, n_features: int = 100,
     classes = []
 
     for b in range(n_batches):
-        b_latent, b_classes = latent.sample_classes(class_centers, n_obs,
-                                                    proportions[b,:])
+        b_latent, b_classes = latent.sample_classes(
+            class_centers, n_obs, proportions[b, :]
+        )
         batches.append(b_latent)
         classes.append(b_classes)
 
@@ -55,13 +62,17 @@ def mnn_synthetic_data(n_obs: int = 1000, n_features: int = 100,
 
     expression = np.dot(latent, W)
 
-    expression_w_batch = batch.add_batch_vectors(expression, latent_batches,
-                                                 batch_scale, bio_batch_angle,
-                                                 projection_to_bio, copy=True)
+    expression_w_batch = batch.add_batch_vectors(
+        expression,
+        latent_batches,
+        batch_scale,
+        bio_batch_angle,
+        projection_to_bio,
+        copy=True,
+    )
 
-    adata = util.arrays_to_anndata(expression_w_batch, batches, classes,
-                                   X_latent=latent, X_gt=expression)
+    adata = util.arrays_to_anndata(
+        expression_w_batch, batches, classes, X_latent=latent, X_gt=expression
+    )
 
     return adata
-
-

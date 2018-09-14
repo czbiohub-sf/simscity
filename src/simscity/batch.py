@@ -6,9 +6,13 @@ from typing import Union
 import numpy as np
 
 
-def gen_batch_vectors(n_batches: int, n_features: int, batch_scale: float,
-                      bio_batch_angle: Union[float, None] = None,
-                      projection_to_bio: Union[np.ndarray, None] = None):
+def gen_batch_vectors(
+    n_batches: int,
+    n_features: int,
+    batch_scale: float,
+    bio_batch_angle: Union[float, None] = None,
+    projection_to_bio: Union[np.ndarray, None] = None,
+):
     """Generates a batch-effect vector for each batch, optionally with some
     relation to the biological space
 
@@ -20,30 +24,35 @@ def gen_batch_vectors(n_batches: int, n_features: int, batch_scale: float,
     :return: array of shape (n_batches, n_features)
     :rtype: np.ndarray
     """
+
     def norm(X):
         return np.linalg.norm(X, axis=1, keepdims=True)
 
     batch_vectors = np.random.randn(n_batches, n_features)
-    batch_vectors = (batch_vectors / norm(batch_vectors)
-                     * np.mean(norm(expression)) * batch_scale)
+    batch_vectors = (
+        batch_vectors / norm(batch_vectors) * np.mean(norm(expression)) * batch_scale
+    )
 
     if bio_batch_angle is not None:
         v_projected = np.dot(batch_vectors, projection_to_bio)
         v_complement = batch_vectors - v_projected
 
         batch_vectors = norm(batch_vectors) * (
-            np.sin(bio_batch_angle) * v_complement / norm(v_complement) +
-            np.cos(bio_batch_angle) * v_projected / norm(v_projected)
+            np.sin(bio_batch_angle) * v_complement / norm(v_complement)
+            + np.cos(bio_batch_angle) * v_projected / norm(v_projected)
         )
 
     return batch_vectors
 
 
-def add_batch_vectors(expression: np.ndarray, batch: np.ndarray,
-                      batch_scale: Union[int, float],
-                      bio_batch_angle: Union[float, None],
-                      projection_to_bio: Union[np.ndarray, None],
-                      copy: bool = True):
+def add_batch_vectors(
+    expression: np.ndarray,
+    batch: np.ndarray,
+    batch_scale: Union[int, float],
+    bio_batch_angle: Union[float, None],
+    projection_to_bio: Union[np.ndarray, None],
+    copy: bool = True,
+):
     """Generate batch-effect vectors and apply them to the expression data
 
     :param expression: array of true expression, in latent space
@@ -62,12 +71,10 @@ def add_batch_vectors(expression: np.ndarray, batch: np.ndarray,
 
     # add batch vector
     batch_vectors = gen_batch_vectors(
-        n_batches, expression.shape[1], batch_scale,
-        bio_batch_angle, projection_to_bio
+        n_batches, expression.shape[1], batch_scale, bio_batch_angle, projection_to_bio
     )
 
     for i in range(n_batches):
         expression[batch == i, :] += batch_vectors[i, :]
 
     return expression
-

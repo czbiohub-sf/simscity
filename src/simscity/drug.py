@@ -40,10 +40,9 @@ def drug_doses(n_latent: int, scale: Union[int, float], n_conditions: int):
     # expected scale of the dot product Xz
     prod_scale = np.sqrt(n_latent * scale ** 2)
 
-    dose_thresholds = (
-        np.linspace(-3 * prod_scale, 3 * prod_scale, n_conditions)
-        + np.random.normal(size=n_conditions, scale=1.0 / (n_conditions ** 2))
-    )
+    dose_thresholds = np.linspace(
+        -3 * prod_scale, 3 * prod_scale, n_conditions
+    ) + np.random.normal(size=n_conditions, scale=1.0 / (n_conditions ** 2))
 
     return dose_thresholds
 

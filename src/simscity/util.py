@@ -8,8 +8,9 @@ import numpy as np
 import warnings
 
 
-def arrays_to_anndata(expression: np.ndarray, batch: np.ndarray,
-                      classes=np.ndarray, **obsm: np.ndarray):
+def arrays_to_anndata(
+    expression: np.ndarray, batch: np.ndarray, classes=np.ndarray, **obsm: np.ndarray
+):
     """Packages together an AnnData object for use in existing pipelines
 
     :param expression: array of gene expression
@@ -25,9 +26,9 @@ def arrays_to_anndata(expression: np.ndarray, batch: np.ndarray,
         warnings.warn("arrays_to_anndata requires scanpy")
         raise
 
-    metadata = pd.DataFrame({'batch': batch, 'class': classes})
-    metadata['batch'] = metadata['batch'].astype('category')
-    metadata['class'] = metadata['class'].astype('category')
+    metadata = pd.DataFrame({"batch": batch, "class": classes})
+    metadata["batch"] = metadata["batch"].astype("category")
+    metadata["class"] = metadata["class"].astype("category")
 
     adata = scanpy.AnnData(X=expression, obs=metadata, obsm=obsm)
 
