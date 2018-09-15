@@ -31,5 +31,5 @@ setuptools.setup(
     ],
     zip_safe=False,
     install_requires=["numpy", "scipy"],
-    extras_require={"scanpy": ["scanpy"], "dev": ["pytest", "black", "pre-commit"]},
+    extras_require={"anndata": ["anndata"], "dev": ["pytest", "black", "pre-commit"]},
 )

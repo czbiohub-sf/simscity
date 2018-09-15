@@ -21,7 +21,7 @@ def arrays_to_anndata(
     """
     try:
         import pandas as pd
-        import scanpy
+        import anndata
     except ImportError:
         warnings.warn("arrays_to_anndata requires scanpy")
         raise
@@ -30,6 +30,6 @@ def arrays_to_anndata(
     metadata["batch"] = metadata["batch"].astype("category")
     metadata["class"] = metadata["class"].astype("category")
 
-    adata = scanpy.AnnData(X=expression, obs=metadata, obsm=obsm)
+    adata = anndata.AnnData(X=expression, obs=metadata, obsm=obsm)
 
     return adata
