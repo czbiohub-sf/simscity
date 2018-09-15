@@ -23,7 +23,7 @@ def arrays_to_anndata(
         import pandas as pd
         import anndata
     except ImportError:
-        warnings.warn("arrays_to_anndata requires scanpy")
+        warnings.warn("arrays_to_anndata requires anndata")
         raise
 
     metadata = pd.DataFrame({"batch": batch, "class": classes})
