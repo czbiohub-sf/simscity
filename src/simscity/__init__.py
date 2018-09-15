@@ -27,8 +27,10 @@ def mnn_synthetic_data(
     :param n_batches: number of batches	
     :param n_latent: size of the latent space used to generate data	
     :param n_classes: number of classes shared across batches	
-    :param proportions: proportion of cells from each class in each batch	
-                        default is equal representation	
+    :param proportions: proportion of cells from each class in each batch. If
+                        shape is (n_classes,) same proportions used each time.
+                        If shape is (n_batches, n_classes) then each row is a
+                        different batch. Default is equal representation
     :param sparsity: sparsity of class weightings
     :param scale: scaling factor for generating data
     :param batch_scale: batch effect relative to data
@@ -40,7 +42,7 @@ def mnn_synthetic_data(
     if proportions is None:
         proportions = np.ones((n_batches, n_classes)) / n_classes
     else:
-        proportions = np.asarray(proportions)
+        proportions = np.broadcast_to(proportions, (n_batches, n_classes))
 
     if seed:
         np.random.seed(seed)

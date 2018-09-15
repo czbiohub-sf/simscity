@@ -30,6 +30,6 @@ def arrays_to_anndata(
     metadata["batch"] = metadata["batch"].astype("category")
     metadata["class"] = metadata["class"].astype("category")
 
-    adata = anndata.AnnData(X=expression, obs=metadata, obsm=obsm)
+    adata = anndata.AnnData(X=expression, obs=metadata, obsm=(obsm or None))
 
     return adata
