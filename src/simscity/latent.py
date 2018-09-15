@@ -135,11 +135,10 @@ def sample_classes(
         np.diagflat(classes[i, :] != 0).astype(int) for i in range(n_classes)
     ]
 
+    z_noise = np.random.standard_normal((n_obs, n_latent))
     obs_z = classes[labels, :]
 
     for i in range(n_classes):
-        obs_z[labels == i, :] += np.dot(
-            np.random.standard_normal((n_obs, n_latent)), class_programs[i]
-        )
+        obs_z[labels == i, :] += np.dot(z_noise[labels == i, :], class_programs[i])
 
     return obs_z, labels
