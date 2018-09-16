@@ -9,8 +9,8 @@ import scipy.stats as st
 
 def library_size(
     n_cells: int,
-    loc: float = 8.5,
-    scale: float = 1.5,
+    loc: float = 7.5,
+    scale: float = 0.5,
     lower_bound: float = -1.0,
     upper_bound: float = np.inf,
 ):
