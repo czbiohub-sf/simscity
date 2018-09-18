@@ -17,7 +17,7 @@ def read(*names, **kwargs):
 
 setuptools.setup(
     name="simscity",
-    version="0.1.0",
+    version="0.2.0",
     license="MIT License",
     description="A library to simulate single-cell data",
     long_description=read("README.md"),
