@@ -20,7 +20,7 @@ def gen_weighting(
                      or (1, n_cols), different values will apply to each columns.
                      If shape is (n_rows, 1) the values will apply to each row.
     :param scale: standard deviation of the weights. The rules for shape are the
-                  same as for `sparsity`
+                  same as for ``sparsity``
     :return:
     """
     if np.any(sparsity <= 0):
@@ -33,7 +33,7 @@ def gen_weighting(
     )
     # fmt: on
 
-    if np.any((weights != 0).sum(1) == 0):
+    if np.any((weights != 0).sum(0) == 0):
         warnings.warn(
             "Some columns have no nonzero weights. Consider increasing sparsity"
         )
@@ -57,7 +57,7 @@ def gen_programs(
                      average. An array of size `(n_features,)` sets the rate per
                      feature
     :param scale: scaling factor for feature weighting. If an array of size
-                  `n_latent` is given, sets the scale per program
+                  ``n_latent`` is given, sets the scale per program
     :return: array of shape (n_latent, n_features)
     """
     if isinstance(sparsity, float) and sparsity >= 1.0:
@@ -88,11 +88,11 @@ def gen_classes(
     :param n_classes: number of different classes
     :param sparsity: probability that a program is used by a given class. Each
                      program will be selected `sparsity * n_classes` times on
-                     average. An array of size `(n_latent,)` sets the rate per
-                     program
+                     average. An array of size ``(n_latent,)`` sets the rate
+                     per program
     :param scale: scaling factor for program weighting. If an array
-                  of size `(n_latent,)` is given, different values are used for
-                  each of the programs
+                  of size ``(n_latent,)`` is given, different values are used
+                  for each of the programs
     :return: array of shape (n_classes, n_latent)
     """
 
@@ -111,16 +111,16 @@ def gen_classes(
 
 
 def sample_classes(
-    n_obs: int, classes: np.ndarray, proportions: np.ndarray = None
+    n_samples: int, classes: np.ndarray, proportions: np.ndarray = None
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Given the class weightings on the latent space and a number of cells,
     produce a sample of cells based on the given class proportions. Cells have
     random noise added along the dimensions specified by their class programs
 
-    :param n_obs: number of observations (cells) to generate
+    :param n_samples: number of samples (cells) to generate
     :param classes: the class weightings on a latent space
     :param proportions: proportions for each class
-    :return: array of shape (n_obs, n_latent) observations and (n_obs,) class labels
+    :return: array of (n_samples, n_latent) observations and (n_samples,) class labels
     """
     n_classes, n_latent = classes.shape
 
@@ -129,16 +129,16 @@ def sample_classes(
     else:
         proportions = np.asarray(proportions)
 
-    labels = np.random.choice(n_classes, n_obs, p=proportions)
+    labels = np.random.choice(n_classes, n_samples, p=proportions)
 
     class_programs = [
         np.diagflat(classes[i, :] != 0).astype(int) for i in range(n_classes)
     ]
 
-    z_noise = np.random.standard_normal((n_obs, n_latent))
-    obs_z = classes[labels, :]
+    z_noise = np.random.standard_normal((n_samples, n_latent))
+    sample_z = classes[labels, :]
 
     for i in range(n_classes):
-        obs_z[labels == i, :] += np.dot(z_noise[labels == i, :], class_programs[i])
+        sample_z[labels == i, :] += np.dot(z_noise[labels == i, :], class_programs[i])
 
-    return obs_z, labels
+    return sample_z, labels

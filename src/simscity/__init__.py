@@ -9,7 +9,7 @@ from simscity import batch, drug, latent, sequencing, util
 
 
 def mnn_synthetic_data(
-    n_obs: int = 1000,
+    n_samples: int = 1000,
     n_features: int = 100,
     n_batches: int = 2,
     n_latent: int = 2,
@@ -22,7 +22,7 @@ def mnn_synthetic_data(
     seed: int = 2018,
 ):
     """	
-    :param n_obs: number of observations (cells) per batch
+    :param n_samples: number of samples (cells) per batch
     :param n_features: number of features (genes)	
     :param n_batches: number of batches	
     :param n_latent: size of the latent space used to generate data	
@@ -49,13 +49,13 @@ def mnn_synthetic_data(
 
     class_centers = latent.gen_classes(n_latent, n_classes, sparsity, scale)
 
-    batches = np.repeat(np.arange(n_batches), n_obs)
+    batches = np.repeat(np.arange(n_batches), n_samples)
     latent_exp = []
     classes = []
 
     for b in range(n_batches):
         b_latent, b_classes = latent.sample_classes(
-            n_obs, class_centers, proportions[b, :]
+            n_samples, class_centers, proportions[b, :]
         )
         latent_exp.append(b_latent)
         classes.append(b_classes)

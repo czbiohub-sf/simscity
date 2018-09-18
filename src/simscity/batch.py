@@ -12,7 +12,7 @@ def gen_batch_vectors(
     batch_scale: float,
     bio_batch_angle: Union[float, None] = None,
     projection_to_bio: Union[np.ndarray, None] = None,
-):
+) -> np.ndarray:
     """Generates a batch-effect vector for each batch, optionally with some
     relation to the biological space
 
@@ -22,11 +22,9 @@ def gen_batch_vectors(
     :param bio_batch_angle: angle of batch effect w/ bio subspace
     :param projection_to_bio: projection from latent into gene space
     :return: array of shape (n_batches, n_features)
-    :rtype: np.ndarray
     """
 
-    def norm(X):
-        return np.linalg.norm(X, axis=1, keepdims=True)
+    norm = lambda X: np.linalg.norm(X, axis=1, keepdims=True)
 
     batch_vectors = np.random.randn(n_batches, n_features)
     batch_vectors = (
@@ -52,7 +50,7 @@ def add_batch_vectors(
     bio_batch_angle: Union[float, None],
     projection_to_bio: Union[np.ndarray, None],
     copy: bool = True,
-):
+) -> np.ndarray:
     """Generate batch-effect vectors and apply them to the expression data
 
     :param expression: array of true expression, in latent space
@@ -62,7 +60,6 @@ def add_batch_vectors(
     :param projection_to_bio: projection from latent into gene space
     :param copy: return a copy of the expression array or modify in-place
     :return: expression matrix with batch effect
-    :rtype: np.ndarray
     """
     if copy:
         expression = expression.copy()
