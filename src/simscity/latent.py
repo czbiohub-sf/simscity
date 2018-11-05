@@ -110,6 +110,24 @@ def gen_classes(
     return classes
 
 
+def gen_class_samples(n_samples: int, class_weighting: np.ndarray) -> np.ndarray:
+    """Given a class weighting on a latent space and a number of cells,
+    produce a sample of cells from the given class. Cells have random
+    noise added along the dimensions specified by their class programs
+
+    :param n_samples: number of samples (cells) to generate
+    :param class_weighting: the class weightings on a latent space
+    :return: array of (n_samples, n_latent) observations
+    """
+    n_latent = class_weighting.shape[0]
+
+    class_programs = np.diagflat(class_weighting != 0).astype(int)
+
+    z_noise = np.random.standard_normal((n_samples, n_latent))
+
+    return class_weighting + np.dot(z_noise, class_programs)
+
+
 def sample_classes(
     n_samples: int, classes: np.ndarray, proportions: np.ndarray = None
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -131,14 +149,9 @@ def sample_classes(
 
     labels = np.random.choice(n_classes, n_samples, p=proportions)
 
-    class_programs = [
-        np.diagflat(classes[i, :] != 0).astype(int) for i in range(n_classes)
-    ]
+    sample_z = np.empty((n_samples, n_latent))
 
-    z_noise = np.random.standard_normal((n_samples, n_latent))
-    sample_z = classes[labels, :]
-
-    for i in range(n_classes):
-        sample_z[labels == i, :] += np.dot(z_noise[labels == i, :], class_programs[i])
+    for i, n_i in zip(*np.unique(labels, return_counts=True)):
+        sample_z[labels == i, :] = gen_class_samples(n_i, classes[i, :])
 
     return sample_z, labels
