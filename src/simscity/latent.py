@@ -129,7 +129,10 @@ def gen_class_samples(n_samples: int, class_weighting: np.ndarray) -> np.ndarray
 
 
 def sample_classes(
-    n_samples: int, classes: np.ndarray, proportions: np.ndarray = None
+    n_samples: int,
+    classes: np.ndarray,
+    proportions: np.ndarray = None,
+    cells_per_class: Union[int, np.ndarray] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Given the class weightings on the latent space and a number of cells,
     produce a sample of cells based on the given class proportions. Cells have
@@ -137,17 +140,23 @@ def sample_classes(
 
     :param n_samples: number of samples (cells) to generate
     :param classes: the class weightings on a latent space
-    :param proportions: proportions for each class
+    :param proportions: proportions for each class. Mutually exclusive with
+                        `cells_per_class`
+    :param cells_per_class: counts for each class, either as a constant or per-class.
+                            Mutually exclusive with `proportions`
     :return: array of (n_samples, n_latent) observations and (n_samples,) class labels
     """
+
     n_classes, n_latent = classes.shape
 
-    if proportions is None:
-        proportions = np.ones(n_classes) / n_classes
+    if (proportions is None) == (cells_per_class is None):
+        raise ValueError(
+            "Either `proportions` or `cells_per_class` must be specified, but not both."
+        )
+    elif proportions is not None:
+        labels = np.random.choice(n_classes, n_samples, p=proportions)
     else:
-        proportions = np.asarray(proportions)
-
-    labels = np.random.choice(n_classes, n_samples, p=proportions)
+        labels = np.random.permutation(np.repeat(np.arange(n_classes), cells_per_class))
 
     sample_z = np.empty((n_samples, n_latent))
 
