@@ -14,7 +14,7 @@ def library_size(
     lower_bound: float = -1.0,
     upper_bound: float = np.inf,
 ) -> np.ndarray:
-    """log-normal noise for the number of reads (with a lower bound to
+    """log-normal noise for the number of umis per cell (with a lower bound to
     represent a minimum depth cutoff)
 
     :param n_cells: number of library sizes to generate
