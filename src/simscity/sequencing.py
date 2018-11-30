@@ -4,6 +4,7 @@
 from typing import Union
 
 import numpy as np
+import scipy.sparse as sp
 import scipy.stats as st
 
 
@@ -49,6 +50,7 @@ def umi_counts(
     raw_expression: np.ndarray,
     lib_size: Union[int, np.ndarray] = None,
     fragments_per_gene: Union[int, np.ndarray] = 1,
+    sparse: bool = False,
 ) -> np.ndarray:
     """Given an (n_samples, n_genes) array of expression values, generates
     a count matrix of UMIs based by multinomial sampling
@@ -57,6 +59,7 @@ def umi_counts(
     :param lib_size: library size for each cell, either constant or per-sample.
                      If None, generates a distribution using ``library_size``
     :param fragments_per_gene: fragments observed per gene, either constant or per-gene
+    :param sparse: if True, return a sparse (CSR) matrix
     :return: integer array of shape (n_samples, n_features) containing umi counts
     """
 
@@ -77,12 +80,20 @@ def umi_counts(
 
     gene_p = fragment_expression / fragment_expression.sum(1, keepdims=True)
 
-    cell_gene_umis = np.vstack(
-        [
-            np.random.multinomial(n=lib_size[i], pvals=gene_p[i, :])
-            for i in range(n_cells)
-        ]
-    )
+    if sparse:
+        cell_gene_umis = sp.vstack(
+            [
+                sp.csr_matrix(np.random.multinomial(n=lib_size[i], pvals=gene_p[i, :]))
+                for i in range(n_cells)
+            ]
+        )
+    else:
+        cell_gene_umis = np.vstack(
+            [
+                np.random.multinomial(n=lib_size[i], pvals=gene_p[i, :])
+                for i in range(n_cells)
+            ]
+        )
 
     return cell_gene_umis
 
@@ -97,10 +108,11 @@ def pcr_noise(
     of PCR we do a ~binomial doubling of each count.
 
     :param read_counts: array of shape (n_samples, n_features) representing unique
-                        molecules (e.g. genes or gene fragments)
+                        molecules (e.g. genes or gene fragments). If a sparse matrix
+                        is provided, the output will be sparse
     :param pcr_betas: PCR efficiency for each feature, either constant or per-feature
     :param n_cycles: number of rounds of PCR to simulate
-    :param copy: return a copy of the read_counts array or modify in-place
+    :param copy: if True, return a copy of the read_counts array, else modify in-place
     :return: int array of shape (n_samples, n_features) with amplified counts
     """
     if np.any(pcr_betas < 0):
@@ -111,10 +123,17 @@ def pcr_noise(
 
     pcr_betas = np.broadcast_to(pcr_betas, (1, read_counts.shape[1]))
 
+    if sp.issparse(read_counts):
+        d = read_counts.data[None, :]
+        pcr_betas = pcr_betas[:, read_counts.nonzero()[1]]
+    else:
+        d = read_counts
+
     # for each round of pcr, each gene increases according to its affinity factor
     for i in range(n_cycles):
-        read_counts += np.random.binomial(
-            n=read_counts, p=pcr_betas, size=read_counts.shape
-        )
+        d += np.random.binomial(n=d, p=pcr_betas, size=d.shape)
+
+    if sp.issparse(read_counts):
+        read_counts.data = d.flatten()
 
     return read_counts
