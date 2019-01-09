@@ -9,9 +9,7 @@ import scipy.special as ssp
 import simscity.latent
 
 
-def drug_projection(
-    n_latent: int, sparsity: float, scale: Union[int, float]
-) -> np.ndarray:
+def projection(n_latent: int, sparsity: float, scale: Union[int, float]) -> np.ndarray:
     """Generates a linear weighting from a latent space to feature space,
     potentially with some coefficients set to zero. Returns the weighting.
 
@@ -31,30 +29,24 @@ def drug_projection(
     return z_weights
 
 
-def drug_doses(
-    n_latent: int, scale: Union[int, float], n_conditions: int
-) -> np.ndarray:
+def doses(scale: Union[int, float], n_conditions: int) -> np.ndarray:
     """
     Generates an array of uniformly-spaced values with a bit of random noise
-    added in. Scaled to cover the expected range of the drug response data
+    added in.
 
-    :param n_latent: dimensionality of the relevant latent space
-    :param scale: the scaling factor used for the drug projection
+    :param scale: scale of the expected drug response data
     :param n_conditions: number of conditions (doses) desired
     :return: array shape (n_conditions,) with thresholds
     """
 
-    # expected scale of the dot product Xz
-    prod_scale = np.sqrt(n_latent) * scale
-
     dose_thresholds = np.linspace(
-        -3 * prod_scale, 3 * prod_scale, n_conditions
+        -3 * scale, 3 * scale, n_conditions
     ) + np.random.normal(size=n_conditions, scale=1.0 / (n_conditions ** 2))
 
     return dose_thresholds
 
 
-def drug_response(
+def response(
     latent_exp: np.ndarray, z_weights: np.ndarray, doses: np.ndarray
 ) -> np.ndarray:
     """Given an array of samples from a latent space, the weighting for a drug,
