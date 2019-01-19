@@ -7,6 +7,8 @@ import numpy as np
 import scipy.sparse as sp
 import scipy.stats as st
 
+import warnings
+
 
 def library_size(
     n_cells: int,
@@ -52,48 +54,58 @@ def umi_counts(
     fragments_per_gene: Union[int, np.ndarray] = 1,
     sparse: bool = False,
 ) -> np.ndarray:
-    """Given an (n_samples, n_genes) array of expression values, generates
-    a count matrix of UMIs based by multinomial sampling
+    """Given an ``(..., n_genes)`` array of expression values, generates a count matrix
+    of UMIs based by multinomial sampling. The last dimension of the array defines
+    the number of genes per cell, while all other dimensions are assumed to index
+    distinct cells.
 
     :param raw_expression: array of raw expression values (non-negative)
     :param lib_size: library size for each cell, either constant or per-sample.
                      If None, generates a distribution using ``library_size``
     :param fragments_per_gene: fragments observed per gene, either constant or per-gene
-    :param sparse: if True, return a sparse (CSR) matrix
-    :return: integer array of shape (n_samples, n_features) containing umi counts
+    :param sparse: if True, return a sparse (CSR) matrix. If ``raw_expression`` is >2-d,
+                   the output matrix will be reshaped to 2-d
+    :return: integer array of shape ``(..., n_features)`` containing umi counts
     """
 
     if np.any(raw_expression < 0):
         raise ValueError("raw_expression must be non-negative")
 
-    n_cells, n_genes = raw_expression.shape
+    if len(raw_expression.shape) == 1:
+        raise ValueError("raw_expression should be >= 2 dimensions")
+
+    if sparse and len(raw_expression.shape) > 2:
+        warnings.warn("Reshaping output to 2 dimensions for sparse matrix")
+
+    n_cells = raw_expression.shape[:-1]
+    n_genes = raw_expression.shape[-1]
 
     if lib_size is None:
         lib_size = library_size(n_cells)  # is this a good default?
     else:
-        lib_size = np.broadcast_to(lib_size, (n_cells,))
+        lib_size = np.broadcast_to(lib_size, n_cells)
 
     fragments_per_gene = np.broadcast_to(fragments_per_gene, (n_genes,))
 
     # each fragment is at the level of the gene it comes from
-    fragment_expression = np.repeat(raw_expression, fragments_per_gene, axis=1)
+    fragment_expression = np.repeat(raw_expression, fragments_per_gene, axis=-1)
 
-    gene_p = fragment_expression / fragment_expression.sum(1, keepdims=True)
+    gene_p = fragment_expression / fragment_expression.sum(-1, keepdims=True)
 
     if sparse:
         cell_gene_umis = sp.vstack(
             [
-                sp.csr_matrix(np.random.multinomial(n=lib_size[i], pvals=gene_p[i, :]))
-                for i in range(n_cells)
+                sp.csr_matrix(np.random.multinomial(n=lib_size[i], pvals=gene_p[i]))
+                for i in np.ndindex(*n_cells)
             ]
         )
     else:
         cell_gene_umis = np.vstack(
             [
-                np.random.multinomial(n=lib_size[i], pvals=gene_p[i, :])
-                for i in range(n_cells)
+                np.random.multinomial(n=lib_size[i], pvals=gene_p[i])
+                for i in np.ndindex(*n_cells)
             ]
-        )
+        ).reshape(*n_cells, -1)
 
     return cell_gene_umis
 
