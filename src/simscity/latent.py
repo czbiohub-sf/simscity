@@ -21,10 +21,10 @@ def gen_weighting(
                      If shape is (n_rows, 1) the values will apply to each row.
     :param scale: standard deviation of the weights. The rules for shape are the
                   same as for ``sparsity``
-    :return:
+    :return: array of shape (n_rows, n_cols)
     """
-    if np.any(sparsity <= 0):
-        raise ValueError(f"Sparsity must be non-negative")
+    if np.any(sparsity <= 0) or np.any(sparsity > 1):
+        raise ValueError(f"Sparsity should be in the interval (0, 1]")
 
     # fmt: off
     weights = (
@@ -60,11 +60,6 @@ def gen_programs(
                   ``n_latent`` is given, sets the scale per program
     :return: array of shape (n_latent, n_features)
     """
-    if isinstance(sparsity, float) and sparsity >= 1.0:
-        warnings.warn(
-            f"Sparsity {sparsity} >= 1.0, every feature will be used by every program"
-        )
-
     # broadcast to correct dimensions
     sparsity = np.broadcast_to(sparsity, (n_features,))
     scale = np.broadcast_to(scale, (n_latent, 1))
@@ -95,12 +90,6 @@ def gen_classes(
                   for each of the programs
     :return: array of shape (n_classes, n_latent)
     """
-
-    if isinstance(sparsity, float) and sparsity >= 1.0:
-        warnings.warn(
-            f"Sparsity {sparsity} >= 1.0, every program will be used by every class"
-        )
-
     # broadcast to correct dimensions
     sparsity = np.broadcast_to(sparsity, (n_latent,))
     scale = np.broadcast_to(scale, (n_latent,))
