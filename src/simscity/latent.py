@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- encoding: utf-8 -*-
 
-from typing import Tuple, Union
+from typing import Callable, Tuple, Union
 
 import numpy as np
 
@@ -99,20 +99,27 @@ def gen_classes(
     return classes
 
 
-def gen_class_samples(n_samples: int, class_weighting: np.ndarray) -> np.ndarray:
+def gen_class_samples(
+    n_samples: int, class_weighting: np.ndarray, cov: np.ndarray = None
+) -> np.ndarray:
     """Given a class weighting on a latent space and a number of cells,
     produce a sample of cells from the given class. Cells have random
     noise added along the dimensions specified by their class programs
 
     :param n_samples: number of samples (cells) to generate
     :param class_weighting: the class weightings on a latent space
+    :param cov: covariance matrix for noise in the latent space
     :return: array of (n_samples, n_latent) observations
     """
     n_latent = class_weighting.shape[0]
+    if cov is None:
+        cov = np.eye(n_latent)
 
     class_programs = np.diagflat(class_weighting != 0).astype(int)
 
-    z_noise = np.random.standard_normal((n_samples, n_latent))
+    z_noise = np.random.multivariate_normal(
+        mean=np.zeros(n_latent), cov=cov, size=n_samples
+    )
 
     return class_weighting + np.dot(z_noise, class_programs)
 
@@ -122,6 +129,7 @@ def sample_classes(
     classes: np.ndarray,
     proportions: np.ndarray = None,
     cells_per_class: Union[int, np.ndarray] = None,
+    program_cov: Union[np.ndarray, Callable] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Given the class weightings on the latent space and a number of cells,
     produce a sample of cells based on the given class proportions. Cells have
@@ -133,6 +141,8 @@ def sample_classes(
                         `cells_per_class`
     :param cells_per_class: counts for each class, either as a constant or per-class.
                             Mutually exclusive with `proportions`
+    :param program_cov: covariance matrix, or a callable that generates matrices.
+                        If None, the identity matrix is used.
     :return: array of (n_samples, n_latent) observations and (n_samples,) class labels
     """
 
@@ -147,9 +157,14 @@ def sample_classes(
     else:
         labels = np.random.permutation(np.repeat(np.arange(n_classes), cells_per_class))
 
+    if isinstance(program_cov, Callable):
+        cov_gen = program_cov
+    else:
+        cov_gen = lambda: program_cov
+
     sample_z = np.empty((n_samples, n_latent))
 
     for i, n_i in zip(*np.unique(labels, return_counts=True)):
-        sample_z[labels == i, :] = gen_class_samples(n_i, classes[i, :])
+        sample_z[labels == i, :] = gen_class_samples(n_i, classes[i, :], cov_gen())
 
     return sample_z, labels
