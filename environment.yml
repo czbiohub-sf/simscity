@@ -1,0 +1,16 @@
+name: simscity
+channels:
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  - altair
+  - ipykernel
+  - numpy
+  - pip
+  - python
+  - scikit-learn
+  - scipy
+  - umap-learn
+  - pip:
+    - anndata
