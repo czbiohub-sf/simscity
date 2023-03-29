@@ -2,7 +2,7 @@
 
 The intention of this repo is to factor out code used to simulate scRNA data. Rather than writing it many times for many uses, we can write it one time and incorporate many features into our simulator. 
 
-Refer [this preprint](https://www.biorxiv.org/content/10.1101/786269v1) for more information. 
+Refer to [this preprint](https://www.biorxiv.org/content/10.1101/786269v1) for more information. 
 
 Examples of data that we might want to generate:
 
